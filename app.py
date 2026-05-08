@@ -1,12 +1,18 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from datetime import datetime
 import sqlite3
+import json
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
 
 app = Flask(__name__)
 app.secret_key = 'kwaya_bonifasi_system_2026'
 
 DATABASE = 'kwaya.db'
+
+# Create uploads folder if not exists
+os.makedirs('static/uploads', exist_ok=True)
+os.makedirs('static/images', exist_ok=True)
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -25,7 +31,6 @@ def init_db():
             tarehe_jiunga DATE DEFAULT CURRENT_DATE
         )''')
         
-        # Add status column if not exists
         try:
             conn.execute("ALTER TABLE wanakwaya ADD COLUMN status TEXT DEFAULT 'active'")
         except:
@@ -60,7 +65,7 @@ def init_db():
             tarehe DATE DEFAULT CURRENT_DATE
         )''')
         
-        # Meza ya ratiba
+        # Meza ya ratiba (events)
         conn.execute('''CREATE TABLE IF NOT EXISTS ratiba (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tukio TEXT NOT NULL,
@@ -78,12 +83,38 @@ def init_db():
             maelezo TEXT
         )''')
         
+        # Meza ya nyimbo (kwa ajili ya ratiba)
+        conn.execute('''CREATE TABLE IF NOT EXISTS nyimbo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            jina TEXT NOT NULL,
+            mtunzi TEXT,
+            maneno TEXT,
+            key TEXT,
+            time_signature TEXT,
+            tempo TEXT,
+            kundi TEXT NOT NULL,
+            nota_pdf TEXT,
+            midi_file TEXT,
+            tarehe_ongezwa DATE DEFAULT CURRENT_DATE
+        )''')
+        
         # Meza ya watumiaji
         conn.execute('''CREATE TABLE IF NOT EXISTS watumiaji (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             role TEXT DEFAULT 'user'
+        )''')
+        
+        # Meza ya timetable zilizohifadhiwa
+        conn.execute('''CREATE TABLE IF NOT EXISTS timetable_saved (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tukio TEXT NOT NULL,
+            tarehe TEXT NOT NULL,
+            jumapili_ngapi TEXT,
+            mwaka_kanisa TEXT,
+            data TEXT NOT NULL,
+            tarehe_kuundwa DATE DEFAULT CURRENT_DATE
         )''')
         
         # Ongeza admin default
@@ -97,12 +128,12 @@ def init_db():
         waliopo = conn.execute("SELECT COUNT(*) as idadi FROM wanakwaya").fetchone()
         if waliopo['idadi'] == 0:
             wanakwaya_mfano = [
-                ('Maria John', '0712345678', 'Soprano', 'Sombetini, Arusha', 'active'),
-                ('Anna Peter', '0723456789', 'Alto', 'Kijenge, Arusha', 'active'),
-                ('John Mushi', '0734567890', 'Tenor', 'Sombetini, Arusha', 'active'),
-                ('Peter Massawe', '0745678901', 'Bass', 'Kaloleni, Arusha', 'active'),
-                ('Esther Joseph', '0756789012', 'Soprano', 'Njiro, Arusha', 'active'),
-                ('Grace Lucy', '0767890123', 'Alto', 'Sombetini, Arusha', 'active'),
+                ('Maria John', '0712345678', 'Soprano', 'Sombetini', 'active'),
+                ('Anna Peter', '0723456789', 'Alto', 'Kijenge', 'active'),
+                ('John Mushi', '0734567890', 'Tenor', 'Sombetini', 'active'),
+                ('Peter Massawe', '0745678901', 'Bass', 'Kaloleni', 'active'),
+                ('Esther Joseph', '0756789012', 'Soprano', 'Njiro', 'active'),
+                ('Grace Lucy', '0767890123', 'Alto', 'Sombetini', 'active'),
             ]
             for w in wanakwaya_mfano:
                 conn.execute("INSERT INTO wanakwaya (jina, simu, sauti, anwani, status) VALUES (?, ?, ?, ?, ?)", w)
@@ -180,7 +211,6 @@ def mwanzilishi():
         return redirect(url_for('login'))
     return render_template('mwanzilishi.html')
 
-# Sifa/Vigezo - All in one page with tabs
 @app.route('/kwaya_yetu/sifa/mwanakwaya')
 def kuwa_mwanakwaya():
     if 'user_id' not in session:
@@ -217,7 +247,6 @@ def kuwa_mlezi():
         return redirect(url_for('login'))
     return render_template('sifa_vigezo.html')
 
-# Malengo - All in one page with tabs
 @app.route('/kwaya_yetu/malengo/mfupi')
 def malengo_mfupi():
     if 'user_id' not in session:
@@ -235,8 +264,6 @@ def malengo_mrefu():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('malengo.html')
-
-# ============ MISSION & VISION ============
 
 @app.route('/mission')
 def mission():
@@ -273,8 +300,6 @@ def code_of_conduct():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('mission_vision.html')
-
-# ============ CALENDAR ROUTES ============
 
 @app.route('/weekly-calendar')
 def weekly_calendar():
@@ -368,6 +393,25 @@ def api_suspend_wanakwaya():
     status_text = 'activated' if status == 'active' else 'suspended'
     return jsonify({'success': True, 'message': f'Mwanakwaya ame{status_text} kikamilifu', 'new_status': status})
 
+@app.route('/api/get_wimbo/<int:id>')
+def api_get_wimbo(id):
+    if 'user_id' not in session:
+        return jsonify({})
+    
+    with get_db() as conn:
+        wimbo = conn.execute("SELECT * FROM nyimbo WHERE id = ?", (id,)).fetchone()
+        if wimbo:
+            return jsonify({
+                'id': wimbo['id'],
+                'jina': wimbo['jina'],
+                'mtunzi': wimbo['mtunzi'],
+                'key': wimbo['key'],
+                'time_signature': wimbo['time_signature'],
+                'tempo': wimbo['tempo'],
+                'kundi': wimbo['kundi']
+            })
+    return jsonify({})
+
 # ============ WANAKWAYA ROUTES ============
 
 @app.route('/wanakwaya', methods=['GET', 'POST'])
@@ -459,10 +503,10 @@ def mahudhurio():
                          mahudhurio=mahudhurio_leo,
                          tarehe_leo=tarehe_leo)
 
-# ============ RATIBA ROUTES ============
+# ============ RATIBA EVENTS ROUTES ============
 
-@app.route('/ratiba', methods=['GET', 'POST'])
-def ratiba():
+@app.route('/ratiba_events', methods=['GET', 'POST'])
+def ratiba_events():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
@@ -477,12 +521,12 @@ def ratiba():
                         (tukio, tarehe, mahali, maelezo))
             conn.commit()
         flash('Ratiba imeongezwa!', 'success')
-        return redirect(url_for('ratiba'))
+        return redirect(url_for('ratiba_events'))
     
     with get_db() as conn:
         orodha = conn.execute("SELECT * FROM ratiba WHERE tarehe >= DATE('now') ORDER BY tarehe ASC").fetchall()
     
-    return render_template('ratiba.html', ratiba=orodha)
+    return render_template('ratiba_events.html', ratiba=orodha)
 
 # ============ ADA ROUTES ============
 
@@ -592,6 +636,215 @@ def assets():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('assets.html')
+
+# ============ RATIBA YA NYIMBO ROUTES (NEW) ============
+
+@app.route('/ratiba/mwaka/<mwaka>')
+def ratiba_mwaka_kanisa(mwaka):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('mwaka_kanisa.html', mwaka=mwaka)
+
+@app.route('/ratiba/makundi/<kundi>')
+def ratiba_makundi_nyimbo(kundi):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db() as conn:
+        nyimbo = conn.execute("SELECT * FROM nyimbo WHERE kundi = ? ORDER BY id DESC", (kundi,)).fetchall()
+    
+    return render_template('makundi_nyimbo.html', kundi=kundi, nyimbo=nyimbo)
+
+@app.route('/ratiba/tengeneza')
+def ratiba_tengeneza():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db() as conn:
+        makundi_yote = ['Mwanzo', 'Shangilio', 'Zaburi', 'Maandamano', 'Misa', 
+                        'Antifona', 'Sadaka', 'Komunyo', 'Shukrani', 'Mwisho']
+        nyimbo_kwa_kundi = {}
+        for k in makundi_yote:
+            nyimbo_kwa_kundi[k] = conn.execute("SELECT id, jina FROM nyimbo WHERE kundi = ? ORDER BY jina", (k,)).fetchall()
+    
+    today = datetime.now().strftime('%Y-%m-%d')
+    return render_template('tengeneza_ratiba.html', nyimbo_kwa_kundi=nyimbo_kwa_kundi, today=today)
+
+@app.route('/ratiba/ongezwa_wimbo', methods=['GET', 'POST'])
+def ratiba_ongezwa_wimbo():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        jina = request.form['jina']
+        mtunzi = request.form.get('mtunzi', '')
+        maneno = request.form.get('maneno', '')
+        key = request.form.get('key', '')
+        time_signature = request.form.get('time_signature', '')
+        tempo = request.form.get('tempo', '')
+        kundi = request.form['kundi']
+        
+        nota_pdf = ''
+        midi_file = ''
+        
+        if 'nota_pdf' in request.files and request.files['nota_pdf'].filename:
+            nota_pdf = request.files['nota_pdf'].filename
+            request.files['nota_pdf'].save(f'static/uploads/{nota_pdf}')
+        
+        if 'midi_file' in request.files and request.files['midi_file'].filename:
+            midi_file = request.files['midi_file'].filename
+            request.files['midi_file'].save(f'static/uploads/{midi_file}')
+        
+        with get_db() as conn:
+            conn.execute('''INSERT INTO nyimbo (jina, mtunzi, maneno, key, time_signature, tempo, kundi, nota_pdf, midi_file)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        (jina, mtunzi, maneno, key, time_signature, tempo, kundi, nota_pdf, midi_file))
+            conn.commit()
+        
+        flash('Wimbo umeongezwa kikamilifu!', 'success')
+        return redirect(url_for('ratiba_makundi_nyimbo', kundi=kundi))
+    
+    return render_template('ongezwa_wimbo.html')
+
+@app.route('/ratiba/wimbo/<int:id>')
+def ratiba_view_wimbo(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db() as conn:
+        wimbo = conn.execute("SELECT * FROM nyimbo WHERE id = ?", (id,)).fetchone()
+    
+    return render_template('view_wimbo.html', wimbo=wimbo)
+
+@app.route('/ratiba/futa_wimbo/<int:id>')
+def ratiba_futa_wimbo(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db() as conn:
+        wimbo = conn.execute("SELECT kundi FROM nyimbo WHERE id = ?", (id,)).fetchone()
+        kundi = wimbo['kundi']
+        conn.execute("DELETE FROM nyimbo WHERE id = ?", (id,))
+        conn.commit()
+    
+    flash('Wimbo umefutwa!', 'success')
+    return redirect(url_for('ratiba_makundi_nyimbo', kundi=kundi))
+
+# ============ API ROUTES FOR TIMETABLE ============
+
+@app.route('/api/generate_timetable_v2', methods=['POST'])
+def generate_timetable_v2():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    timetable = []
+    
+    section_names = {
+        'mwanzo': 'MWANZO',
+        'kyrie': 'KYRIE',
+        'gloria': 'GLORIA',
+        'sanctus': 'SANCTUS',
+        'agnus': 'AGNUS DEI',
+        'shangilio': 'SHANGILIO',
+        'zaburi': 'ZABURI',
+        'sadaka': 'SADAKA',
+        'komunyo': 'KOMUNYO',
+        'shukrani': 'SHUKRANI',
+        'mwisho': 'MWISHO'
+    }
+    
+    songs_data = data.get('songsData', {})
+    
+    with get_db() as conn:
+        for section, songs in songs_data.items():
+            if songs and len(songs) > 0:
+                for idx, song in enumerate(songs):
+                    # If song details already provided, use them
+                    if 'mtunzi' in song and song['mtunzi']:
+                        timetable.append({
+                            'section': section,
+                            'sehemu': section_names.get(section, section),
+                            'wimbo_id': song['id'],
+                            'wimbo_jina': song['jina'],
+                            'number': idx + 1,
+                            'mtunzi': song.get('mtunzi', '-'),
+                            'key': song.get('key', '-'),
+                            'time_sig': song.get('time_sig', '-'),
+                            'tempo': song.get('tempo', '-')
+                        })
+                    else:
+                        # Fetch from database
+                        wimbo = conn.execute("SELECT jina, mtunzi, key, time_signature, tempo FROM nyimbo WHERE id = ?", (song['id'],)).fetchone()
+                        if wimbo:
+                            timetable.append({
+                                'section': section,
+                                'sehemu': section_names.get(section, section),
+                                'wimbo_id': song['id'],
+                                'wimbo_jina': song['jina'],
+                                'number': idx + 1,
+                                'mtunzi': wimbo['mtunzi'] or '-',
+                                'key': wimbo['key'] or '-',
+                                'time_sig': wimbo['time_signature'] or '-',
+                                'tempo': wimbo['tempo'] or '-'
+                            })
+    
+    # Save to database
+    tukio = data.get('tukio', '')
+    tarehe = data.get('tarehe', '')
+    jumapili = data.get('jumapili', '')
+    mwaka = data.get('mwaka', '')
+    tukio_text = data.get('tukioText', '')
+    
+    with get_db() as conn:
+        conn.execute('''INSERT INTO timetable_saved (tukio, tarehe, jumapili_ngapi, mwaka_kanisa, data)
+                    VALUES (?, ?, ?, ?, ?)''',
+                    (tukio_text, tarehe, jumapili, mwaka, json.dumps(timetable)))
+        conn.commit()
+    
+    return jsonify({'success': True, 'timetable': timetable, 'tukio_text': tukio_text, 'tarehe': tarehe})
+
+@app.route('/api/generate_timetable', methods=['POST'])
+def generate_timetable():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    timetable = []
+    
+    section_names = {
+        'mwanzo': 'MWANZO',
+        'kyrie': 'KYRIE',
+        'gloria': 'GLORIA',
+        'sanctus': 'SANCTUS',
+        'agnus': 'AGNUS DEI',
+        'shangilio': 'SHANGILIO',
+        'zaburi': 'ZABURI',
+        'sadaka': 'SADAKA',
+        'komunyo': 'KOMUNYO',
+        'shukrani': 'SHUKRANI',
+        'mwisho': 'MWISHO'
+    }
+    
+    with get_db() as conn:
+        for section, songs in data.items():
+            if songs and len(songs) > 0:
+                for idx, song in enumerate(songs):
+                    wimbo = conn.execute("SELECT jina, mtunzi, key, time_signature, tempo FROM nyimbo WHERE id = ?", (song['id'],)).fetchone()
+                    if wimbo:
+                        timetable.append({
+                            'section': section,
+                            'sehemu': section_names.get(section, section),
+                            'wimbo_id': song['id'],
+                            'wimbo_jina': song['jina'],
+                            'number': idx + 1,
+                            'mtunzi': wimbo['mtunzi'] or '-',
+                            'key': wimbo['key'] or '-',
+                            'time_sig': wimbo['time_signature'] or '-',
+                            'tempo': wimbo['tempo'] or '-'
+                        })
+    
+    return jsonify({'success': True, 'timetable': timetable})
 
 # ============ RUN APP ============
 

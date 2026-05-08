@@ -17,7 +17,6 @@
             min-height: 100vh;
         }
         
-        /* HEADER STYLING - GOLD AND BLUE */
         .header {
             background: linear-gradient(135deg, #0a1a3a 0%, #1a2a6e 50%, #0a1a3a 100%);
             padding: 35px 20px;
@@ -90,7 +89,6 @@
             border-radius: 2px;
         }
         
-        /* User Bar */
         .user-bar {
             background: #1a2a6e;
             padding: 12px 30px;
@@ -122,7 +120,6 @@
             transform: translateY(-2px);
         }
         
-        /* Navigation - Main Menu */
         .nav {
             background: linear-gradient(135deg, #1a2a6e 0%, #2a3a7e 100%);
             padding: 0;
@@ -168,7 +165,6 @@
             box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
         }
         
-        /* Dropdown Menu - No disappearing */
         .dropdown-menu {
             display: none;
             position: absolute;
@@ -186,10 +182,6 @@
         }
         
         .nav-menu > li:hover .dropdown-menu {
-            display: block;
-        }
-        
-        .dropdown-menu:hover {
             display: block;
         }
         
@@ -214,7 +206,6 @@
             padding-left: 25px;
         }
         
-        /* Nested Dropdown - No disappearing */
         .nested-dropdown {
             position: relative;
         }
@@ -232,7 +223,7 @@
             left: 100%;
             top: 0;
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-            min-width: 250px;
+            min-width: 220px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             border-radius: 12px;
             z-index: 1001;
@@ -242,10 +233,6 @@
         }
         
         .nested-dropdown:hover .nested-menu {
-            display: block;
-        }
-        
-        .nested-menu:hover {
             display: block;
         }
         
@@ -264,7 +251,6 @@
             border-radius: 8px;
         }
         
-        /* Container */
         .container {
             max-width: 1400px;
             margin: 30px auto;
@@ -275,7 +261,6 @@
             min-height: 500px;
         }
         
-        /* Flash Messages */
         .flash-messages {
             max-width: 1400px;
             margin: 20px auto 0;
@@ -300,7 +285,6 @@
             border-left: 5px solid #FFD700;
         }
         
-        /* Footer */
         .footer {
             background: linear-gradient(135deg, #0a1a3a 0%, #1a2a6e 100%);
             color: #FFD700;
@@ -337,7 +321,6 @@
     </style>
 </head>
 <body>
-    <!-- HEADER -->
     <div class="header">
         <h1>🎵 KWAYA YA MTAKATIFU BONIFASI ASKOFU NA SHAHIDI 🎵</h1>
         <h2>Parokia ya Moyo Mtakatifu Wa Yesu, Sombetini</h2>
@@ -352,12 +335,10 @@
         <a href="{{ url_for('logout') }}" class="logout-btn">🚪 Toka Mfumo</a>
     </div>
     
-    <!-- Navigation Menu - 10 Menus -->
     <div class="nav">
         <ul class="nav-menu">
             <li><a href="{{ url_for('dashboard') }}">🏠 Home</a></li>
             
-            <!-- Kwaya Yetu with Submenus -->
             <li class="dropdown">
                 <a href="#">📖 Kwaya Yetu</a>
                 <ul class="dropdown-menu">
@@ -389,7 +370,49 @@
             </li>
             
             <li><a href="{{ url_for('wanakwaya') }}">👥 Wanakwaya</a></li>
-            <li><a href="#">📅 Ratiba</a></li>
+            
+            <li class="dropdown">
+                <a href="#">📅 Ratiba</a>
+                <ul class="dropdown-menu">
+                    <li class="nested-dropdown">
+                        <a href="#">📖 Mwaka wa Kanisa</a>
+                        <ul class="nested-menu">
+                            <li><a href="{{ url_for('ratiba_mwaka_kanisa', mwaka='A') }}">📅 Mwaka A</a></li>
+                            <li><a href="{{ url_for('ratiba_mwaka_kanisa', mwaka='B') }}">📅 Mwaka B</a></li>
+                            <li><a href="{{ url_for('ratiba_mwaka_kanisa', mwaka='C') }}">📅 Mwaka C</a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nested-dropdown">
+                        <a href="#">🎵 Makundi ya Nyimbo</a>
+                        <ul class="nested-menu">
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Maandamano') }}">🎶 Maandamano</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Mwanzo') }}">🎵 Mwanzo</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Shangilio') }}">🎉 Shangilio</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Zaburi') }}">📖 Zaburi</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Misa') }}">⛪ Misa</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Antifona') }}">📜 Antifona</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Sadaka') }}">💰 Sadaka</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Komunyo') }}">🍞 Komunyo</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Shukrani') }}">🙏 Shukrani</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Ubatizo') }}">💧 Ubatizo</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Ndoa') }}">💍 Ndoa/Harusi</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Mazishi') }}">🕯️ Mazishi</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Christmas') }}">🎄 Christmas</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Pasaka') }}">🐣 Pasaka</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Majilio') }}">🕯️ Majilio</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Kwaresma') }}">✝️ Kwaresma</a></li>
+                            <li><a href="{{ url_for('ratiba_makundi_nyimbo', kundi='Mwisho') }}">🏁 Mwisho</a></li>
+                        </ul>
+                    </li>
+                    
+                    <li><a href="{{ url_for('ratiba_tengeneza') }}">✏️ Tengeneza Ratiba</a></li>
+                    <li style="border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px;">
+                        <a href="{{ url_for('ratiba_ongezwa_wimbo') }}" style="color: #28a745; font-weight: bold;">➕ Ongeza Wimbo Mpya</a>
+                    </li>
+                </ul>
+            </li>
+            
             <li><a href="#">📋 Mahudhurio</a></li>
             <li><a href="#">💰 Ada</a></li>
             <li><a href="#">📈 Mapato</a></li>

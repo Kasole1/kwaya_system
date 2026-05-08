@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Mwaka wa Kanisa{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 50px;">
+    <h1>📖 Mwaka wa Kanisa - Mwaka {{ mwaka }}</h1>
+    <div class="gold-border" style="margin: 20px auto;"></div>
+    <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 40px;">
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 15px; width: 250px;">
+            <h3>🎵 Mwanzo</h3>
+            <p>Nyimbo za kuanzia ibada</p>
+            <a href="#" style="color: #1a2a6e;">View →</a>
+        </div>
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 15px; width: 250px;">
+            <h3>🎵 Shangilio</h3>
+            <p>Nyimbo za shangilio</p>
+            <a href="#" style="color: #1a2a6e;">View →</a>
+        </div>
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 15px; width: 250px;">
+            <h3>📖 Zaburi</h3>
+            <p>Zaburi za wiki</p>
+            <a href="#" style="color: #1a2a6e;">View →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

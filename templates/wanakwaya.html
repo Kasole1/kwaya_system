@@ -726,8 +726,32 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>🏠 Anwani</label>
-                    <input type="text" id="anwani" name="anwani" placeholder="Mfano: Sombetini, Arusha">
+                    <label>🏠 Anwani (Kata/Sehemu - Arusha Mjini)</label>
+                    <select id="anwani" name="anwani">
+                        <option value="">-- Chagua Anwani --</option>
+                        <option value="Sombetini">Sombetini</option>
+                        <option value="Kijenge">Kijenge</option>
+                        <option value="Kaloleni">Kaloleni</option>
+                        <option value="Njiro">Njiro</option>
+                        <option value="Sekei">Sekei</option>
+                        <option value="Tengeru">Tengeru</option>
+                        <option value="Kimandolu">Kimandolu</option>
+                        <option value="Themi">Themi</option>
+                        <option value="Levolosi">Levolosi</option>
+                        <option value="Baraa">Baraa</option>
+                        <option value="Olmirani">Olmirani</option>
+                        <option value="Moshono">Moshono</option>
+                        <option value="Kati (Town)">Kati (Town)</option>
+                        <option value="Uzunguni">Uzunguni</option>
+                        <option value="Ngaramtoni">Ngaramtoni</option>
+                        <option value="Sakina">Sakina</option>
+                        <option value="Mianzini">Mianzini</option>
+                        <option value="Elerai">Elerai</option>
+                        <option value="Olasiti">Olasiti</option>
+                        <option value="Nkoanrua">Nkoanrua</option>
+                        <option value="Mlangarini">Mlangarini</option>
+                        <option value="Engutoto">Engutoto</option>
+                    </select>
                 </div>
                 <button type="submit" class="btn-submit">💾 Hifadhi Mwanakwaya</button>
             </form>
@@ -836,67 +860,47 @@
     }
     
     async function toggleSuspend(id) {
-    const member = wanakwayaData.find(m => m.id === id);
-    const newStatus = member.status === 'suspended' ? 'active' : 'suspended';
-    const suspendText = newStatus === 'suspended' ? 'Simamisha' : 'Reactivate';
-    
-    const response = await fetch('/api/wanakwaya/suspend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id, status: newStatus })
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-        // Show success message
-        showNotification(result.message, 'success');
-        // Reload data to update UI
-        await loadWanakwaya();
-    } else {
-        showNotification(result.message || 'Kuna tatizo, tafadhali jaribu tena', 'error');
+        const member = wanakwayaData.find(m => m.id === id);
+        const newStatus = member.status === 'suspended' ? 'active' : 'suspended';
+        
+        const response = await fetch('/api/wanakwaya/suspend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, status: newStatus })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(result.message, 'success');
+            await loadWanakwaya();
+        } else {
+            showNotification(result.message || 'Kuna tatizo, tafadhali jaribu tena', 'error');
+        }
     }
-}
-
-// Add notification function
-function showNotification(message, type) {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 8px;
-        color: white;
-        font-weight: bold;
-        z-index: 9999;
-        animation: slideIn 0.3s ease;
-        background: ${type === 'success' ? '#28a745' : '#dc3545'};
-    `;
-    notification.innerHTML = message;
-    document.body.appendChild(notification);
     
-    // Remove after 3 seconds
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+        `;
+        notification.innerHTML = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
     
     function toggleVoice(voice) {
         voiceStates[voice] = !voiceStates[voice];
@@ -1010,6 +1014,19 @@ document.head.appendChild(style);
         document.getElementById('searchInput').value = '';
         renderWanakwaya();
     }
+    
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(styleSheet);
     
     document.getElementById('memberForm').addEventListener('submit', async (e) => {
         e.preventDefault();
