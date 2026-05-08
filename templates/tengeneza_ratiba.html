@@ -102,7 +102,7 @@
         margin-bottom: 25px;
     }
     
-    /* Section Cards - Different Colors (NOT gold gradient) */
+    /* Section Cards - Different Colors */
     .section-card {
         border-radius: 20px;
         padding: 16px;
@@ -138,7 +138,6 @@
         align-items: center;
     }
     
-    /* Title colors */
     .card-mwanzo .section-title { color: #C0392B; }
     .card-shangilio .section-title { color: #B8860B; }
     .card-zaburi .section-title { color: #00838F; }
@@ -311,6 +310,11 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
     }
     
     .whatsapp-btn {
@@ -321,6 +325,11 @@
     .print-btn {
         background: #1a2a6e;
         color: #FFD700;
+    }
+    
+    .viewonly-btn {
+        background: #17a2b8;
+        color: white;
     }
     
     .delete-all-btn {
@@ -337,7 +346,6 @@
         display: none;
     }
     
-    /* Timetable Header */
     .timetable-header {
         text-align: center;
         margin-bottom: 25px;
@@ -355,7 +363,6 @@
         color: #FFD700;
         font-size: 18px;
         margin-bottom: 10px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     }
     
     .timetable-header p {
@@ -370,14 +377,13 @@
         margin: 10px auto;
     }
     
-    /* Timetable Sections - Gold increasing colors for ENTIRE section */
     .timetable-container {
         display: flex;
         flex-direction: column;
         gap: 25px;
     }
     
-    /* Gold backgrounds for entire sections - increasing intensity */
+    /* Gold section backgrounds */
     .gold-section-1 { background: linear-gradient(135deg, #FFF8E7 0%, #FFEFC0 100%); border-radius: 20px; border-left: 6px solid #E6B800; }
     .gold-section-2 { background: linear-gradient(135deg, #FFF3D6 0%, #FFE8A8 100%); border-radius: 20px; border-left: 6px solid #D4A800; }
     .gold-section-3 { background: linear-gradient(135deg, #FFEEC4 0%, #FFE090 100%); border-radius: 20px; border-left: 6px solid #C29900; }
@@ -398,6 +404,24 @@
         text-align: center;
         border-radius: 20px 20px 0 0;
         color: #5C3E00;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .delete-group-btn {
+        background: rgba(0,0,0,0.2);
+        color: #5C3E00;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
+    .delete-group-btn:hover {
+        background: #dc3545;
+        color: white;
     }
     
     .timetable-table {
@@ -435,8 +459,40 @@
         font-size: 11px;
     }
     
-    .view-link:hover {
-        background: #0f1a4a;
+    .edit-song-btn {
+        background: #FFD700;
+        color: #1a2a6e;
+        border: none;
+        padding: 3px 8px;
+        border-radius: 15px;
+        cursor: pointer;
+        margin-right: 5px;
+    }
+    
+    .delete-song-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 3px 8px;
+        border-radius: 15px;
+        cursor: pointer;
+    }
+    
+    .delete-all-bottom {
+        text-align: center;
+        margin-top: 20px;
+        padding: 15px;
+        border-top: 1px solid #ddd;
+    }
+    
+    .delete-all-bottom-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: bold;
     }
     
     @media (max-width: 900px) {
@@ -459,11 +515,6 @@
             display: block !important;
             margin: 0;
             padding: 0;
-        }
-        .gold-section-1, .gold-section-2, .gold-section-3, .gold-section-4, .gold-section-5,
-        .gold-section-6, .gold-section-7, .gold-section-8, .gold-section-9, .gold-section-10,
-        .gold-section-11 {
-            background: #f5f5f5 !important;
         }
     }
 </style>
@@ -700,7 +751,8 @@
                 <div class="action-buttons">
                     <button class="action-btn whatsapp-btn" onclick="shareToWhatsApp()">📱 Share WhatsApp</button>
                     <button class="action-btn print-btn" onclick="printTimetable()">🖨️ Print</button>
-                    <button class="action-btn delete-all-btn" onclick="clearAllSongs()">🗑️ Futa Zote</button>
+                    <button class="action-btn viewonly-btn" onclick="viewOnlyTimetable()">👁️ View Only</button>
+                    <button class="action-btn delete-all-btn" onclick="deleteAllTimetable()">🗑️ Futa Zote</button>
                 </div>
                 <div id="timetableContent"></div>
             </div>
@@ -905,7 +957,6 @@
         shukrani: 'SHUKRANI', mwisho: 'MWISHO'
     };
     
-    // Gold section classes for entire sections - increasing intensity
     const goldSectionClasses = [
         'gold-section-1', 'gold-section-2', 'gold-section-3', 'gold-section-4', 'gold-section-5',
         'gold-section-6', 'gold-section-7', 'gold-section-8', 'gold-section-9', 'gold-section-10', 'gold-section-11'
@@ -918,8 +969,10 @@
             return;
         }
         
-        // Format date
         const tarehe = info.tarehe ? new Date(info.tarehe).toLocaleDateString('sw-TZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+        
+        window.currentTimetable = timetable;
+        window.currentTimetableInfo = info;
         
         let html = `
             <div class="timetable-header">
@@ -931,7 +984,6 @@
             </div>
         `;
         
-        // Group by section
         const grouped = {};
         for (const item of timetable) {
             const sectionKey = item.sehemu;
@@ -939,35 +991,29 @@
             grouped[sectionKey].push(item);
         }
         
-        html += '<div class="timetable-container">';
-        let serial = 1;
+        html += '<div class="timetable-container" id="timetableContainer">';
         let goldIndex = 0;
+        let serial = 1;
         
         for (const [section, songs] of Object.entries(grouped)) {
             const goldClass = goldSectionClasses[goldIndex % goldSectionClasses.length];
             goldIndex++;
             
             html += `
-                <div class="${goldClass}">
+                <div class="${goldClass}" data-section="${section}">
                     <div class="section-header-gold">
-                        🎵 ${section}
+                        <span>🎵 ${section}</span>
+                        <button class="delete-group-btn" onclick="deleteGroup('${section}')">🗑️ Futa Kundi Zima</button>
                     </div>
                     <table class="timetable-table">
                         <thead>
-                            <tr>
-                                <th>SN</th>
-                                <th>WIMBO</th>
-                                <th>MTUNZI</th>
-                                <th>KEY</th>
-                                <th>SIGNATURE</th>
-                                <th>TEMPO</th>
-                                <th>VIEW</th>
-                            </tr>
+                            <tr><th>SN</th><th>WIMBO</th><th>MTUNZI</th><th>KEY</th><th>SIGNATURE</th><th>TEMPO</th><th>VIEW</th><th>ACTIONS</th></tr>
                         </thead>
                         <tbody>
             `;
             
-            for (const item of songs) {
+            for (let idx = 0; idx < songs.length; idx++) {
+                const item = songs[idx];
                 html += `
                     <tr>
                         <td>${serial++}</td>
@@ -977,21 +1023,143 @@
                         <td>${escapeHtml(item.time_sig)}</td>
                         <td>${escapeHtml(item.tempo)}</td>
                         <td><a href="/ratiba/wimbo/${item.wimbo_id}" target="_blank" class="view-link">👁️ View</a></td>
+                        <td>
+                            <button class="edit-song-btn" onclick="editSongInTimetable('${section}', ${idx})">✏️</button>
+                            <button class="delete-song-btn" onclick="deleteSongFromTimetable('${section}', ${idx})">🗑️</button>
+                        </td>
                     </tr>
                 `;
             }
             
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            html += `</tbody></table></div>`;
         }
         
+        html += `<div class="delete-all-bottom"><button class="delete-all-bottom-btn" onclick="deleteAllTimetable()">🗑️ Futa Ratiba Nzima</button></div>`;
         html += '</div>';
+        
         document.getElementById('timetableContent').innerHTML = html;
         document.getElementById('timetableResult').style.display = 'block';
         document.getElementById('timetableResult').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function deleteSongFromTimetable(section, songIndex) {
+        if (confirm(`Una uhakika unataka kufuta wimbo huu kutoka kwenye ${section}?`)) {
+            const newTimetable = [];
+            let currentSection = false;
+            let skipIndex = 0;
+            
+            for (const item of window.currentTimetable) {
+                if (item.sehemu === section) {
+                    if (skipIndex === songIndex) {
+                        skipIndex++;
+                        continue;
+                    }
+                    skipIndex++;
+                    newTimetable.push(item);
+                } else {
+                    newTimetable.push(item);
+                }
+            }
+            
+            window.currentTimetable = newTimetable;
+            displayTimetable(window.currentTimetable, window.currentTimetableInfo);
+            updateSongCollectionsFromTimetable();
+        }
+    }
+    
+    function deleteGroup(section) {
+        if (confirm(`Una uhakika unataka kufuta kundi ZIMA la ${section}?`)) {
+            const newTimetable = [];
+            for (const item of window.currentTimetable) {
+                if (item.sehemu !== section) {
+                    newTimetable.push(item);
+                }
+            }
+            window.currentTimetable = newTimetable;
+            displayTimetable(window.currentTimetable, window.currentTimetableInfo);
+            updateSongCollectionsFromTimetable();
+        }
+    }
+    
+    function deleteAllTimetable() {
+        if (confirm('UNA UHAKIKA? Hii itafuta RATIBA NZIMA iliyotengenezwa. Kitendo hiki hakiwezi kutenguliwa!')) {
+            window.currentTimetable = [];
+            displayTimetable(window.currentTimetable, window.currentTimetableInfo);
+            for (const section in songCollections) {
+                songCollections[section] = [];
+                renderSection(section);
+            }
+        }
+    }
+    
+    function editSongInTimetable(section, songIndex) {
+        let songToEdit = null;
+        let currentIndex = 0;
+        
+        for (const item of window.currentTimetable) {
+            if (item.sehemu === section) {
+                if (currentIndex === songIndex) {
+                    songToEdit = item;
+                    break;
+                }
+                currentIndex++;
+            }
+        }
+        
+        if (songToEdit) {
+            const newName = prompt('Hariri Jina la Wimbo:', songToEdit.wimbo_jina);
+            if (newName && newName.trim()) {
+                songToEdit.wimbo_jina = newName.trim();
+                displayTimetable(window.currentTimetable, window.currentTimetableInfo);
+                updateSongCollectionsFromTimetable();
+            }
+        }
+    }
+    
+    function updateSongCollectionsFromTimetable() {
+        for (const section in songCollections) {
+            songCollections[section] = [];
+        }
+        
+        const sectionToKey = {
+            'MWANZO': 'mwanzo', 'KYRIE': 'kyrie', 'GLORIA': 'gloria',
+            'SANCTUS': 'sanctus', 'AGNUS DEI': 'agnus', 'SHANGILIO': 'shangilio',
+            'ZABURI': 'zaburi', 'SADAKA': 'sadaka', 'KOMUNYO': 'komunyo',
+            'SHUKRANI': 'shukrani', 'MWISHO': 'mwisho'
+        };
+        
+        for (const item of window.currentTimetable) {
+            const key = sectionToKey[item.sehemu];
+            if (key) {
+                songCollections[key].push({
+                    id: item.wimbo_id,
+                    jina: item.wimbo_jina,
+                    number: songCollections[key].length + 1,
+                    mtunzi: item.mtunzi,
+                    key: item.key,
+                    time_sig: item.time_sig,
+                    tempo: item.tempo
+                });
+            }
+        }
+        
+        for (const section in songCollections) {
+            renderSection(section);
+        }
+    }
+    
+    function viewOnlyTimetable() {
+        if (!window.currentTimetable || window.currentTimetable.length === 0) {
+            alert('Hakuna ratiba ya kutazama. Tafadhali tengeneza ratiba kwanza.');
+            return;
+        }
+        
+        const viewData = {
+            timetable: window.currentTimetable,
+            info: window.currentTimetableInfo
+        };
+        localStorage.setItem('viewTimetableData', JSON.stringify(viewData));
+        window.open('/ratiba/view_only', '_blank');
     }
     
     function shareToWhatsApp() {

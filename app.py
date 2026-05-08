@@ -846,6 +846,12 @@ def generate_timetable():
     
     return jsonify({'success': True, 'timetable': timetable})
 
+@app.route('/ratiba/view_only')
+def ratiba_view_only():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('view_only_timetable.html')
+
 # ============ RUN APP ============
 
 if __name__ == '__main__':
