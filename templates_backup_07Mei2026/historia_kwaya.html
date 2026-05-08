@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Historia ya Kwaya{% endblock %}
+
+{% block content %}
+<style>
+    .history-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .history-card {
+        background: white;
+        border-radius: 20px;
+        padding: 35px;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border-top: 5px solid #FFD700;
+    }
+    .history-card h1 {
+        color: #1a2a6e;
+        margin-bottom: 20px;
+        font-size: 28px;
+    }
+    .history-card p {
+        font-size: 16px;
+        line-height: 1.8;
+        color: #333;
+        margin-bottom: 15px;
+    }
+    .timeline {
+        margin-top: 30px;
+    }
+    .timeline-item {
+        border-left: 3px solid #FFD700;
+        padding-left: 20px;
+        margin-bottom: 25px;
+    }
+    .timeline-year {
+        color: #FFD700;
+        font-weight: bold;
+        font-size: 20px;
+    }
+</style>
+
+<div class="history-container">
+    <div class="history-card">
+        <h1>📜 Historia ya Kwaya Mt. Bonifasi</h1>
+        <p>Kwaya ya Mtakatifu Bonifasi Askofu na Shahidi ilianzishwa mwaka <strong>2010</strong> kwa lengo la kuimba nyimbo za kumsifu Mungu na kueneza injili kupitia nyimbo. Kwaya hii ipo chini ya Parokia ya Moyo Mtakatifu Wa Yesu, Sombetini, Jimbo Kuu Katoliki La Arusha.</p>
+        
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-year">📅 2010</div>
+                <p>Kwaya ilianzishwa na wanakwaya 15 wa kwanza chini ya uongozi wa Bw. Joseph Ndesamburo.</p>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-year">📅 2015</div>
+                <p>Kwaya ilishiriki tamasha la kwaya la jimbo zima na kushinda tuzo ya kwaya bora.</p>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-year">📅 2020</div>
+                <p>Kwaya ilirekodi albamu yake ya kwanza yenye nyimbo 12 za kumsifu Mungu.</p>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-year">📅 2024</div>
+                <p>Kwaya ilifanikiwa kuwa na wanakwaya zaidi ya 35 na kuanzisha mfumo wa digital wa usimamizi.</p>
+            </div>
+        </div>
+        
+        <p style="margin-top: 20px;">Kwa zaidi ya miaka kumi na nne, kwaya imekuwa ikishiriki katika ibada na hafla mbalimbali za kijimbo na kikanda, ikileta furaha na ibada kwa waumini wengi.</p>
+    </div>
+</div>
+{% endblock %}
