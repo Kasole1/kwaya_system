@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta
 import sqlite3
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -28,15 +28,11 @@ def init_db():
             simu TEXT NOT NULL,
             sauti TEXT,
             anwani TEXT,
-            tarehe_jiunga DATE DEFAULT CURRENT_DATE
+            tarehe_jiunga DATE DEFAULT CURRENT_DATE,
+            status TEXT DEFAULT 'active'
         )''')
         
-        try:
-            conn.execute("ALTER TABLE wanakwaya ADD COLUMN status TEXT DEFAULT 'active'")
-        except:
-            pass
-        
-        # Meza ya mahudhurio
+        # Meza ya mahudhurio ya awali (simple)
         conn.execute('''CREATE TABLE IF NOT EXISTS mahudhurio (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             mwanakwaya_id INTEGER NOT NULL,
@@ -117,6 +113,61 @@ def init_db():
             tarehe_kuundwa DATE DEFAULT CURRENT_DATE
         )''')
         
+        # ============ MEZA MPYA ZA MAHUDHURIO ============
+        
+        # Meza ya mahudhurio ya kina (tracking per event)
+        conn.execute('''CREATE TABLE IF NOT EXISTS mahudhurio_detailed (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mwanakwaya_id INTEGER NOT NULL,
+            mwanakwaya_jina TEXT NOT NULL,
+            sauti TEXT NOT NULL,
+            tukio TEXT NOT NULL,
+            tarehe DATE DEFAULT CURRENT_DATE,
+            status TEXT DEFAULT 'absent',
+            dakika_chelewa INTEGER DEFAULT 0,
+            penalty REAL DEFAULT 0,
+            imelipwa BOOLEAN DEFAULT 0,
+            tarehe_penalty_double DATE,
+            FOREIGN KEY (mwanakwaya_id) REFERENCES wanakwaya(id)
+        )''')
+        
+        # Meza ya penalty settings per event type
+        conn.execute('''CREATE TABLE IF NOT EXISTS penalty_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tukio TEXT UNIQUE NOT NULL,
+            penalty_utoro REAL DEFAULT 20000,
+            penalty_kwa_dakika REAL DEFAULT 1000,
+            siku_za_kudouble INTEGER DEFAULT 10
+        )''')
+        
+        # Meza ya tukio la sasa (current event being recorded)
+        conn.execute('''CREATE TABLE IF NOT EXISTS current_event (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tukio TEXT NOT NULL,
+            tarehe DATE DEFAULT CURRENT_DATE
+        )''')
+        
+        # Insert default penalty settings if not exists
+        default_settings = [
+            ('Misa', 20000, 1000, 10),
+            ('Mazishi', 15000, 500, 10),
+            ('Harusi', 25000, 1500, 10),
+            ('Sherehe', 30000, 2000, 10),
+            ('Mashindano', 50000, 3000, 10),
+            ('Mazoezi', 5000, 500, 10),
+            ('Mazoezi Ya Kwaya', 5000, 500, 10),
+            ('Kwaya Ya Jumapili', 10000, 800, 10),
+            ('Dominica', 10000, 800, 10)
+        ]
+        for setting in default_settings:
+            conn.execute('''INSERT OR IGNORE INTO penalty_settings (tukio, penalty_utoro, penalty_kwa_dakika, siku_za_kudouble)
+                        VALUES (?, ?, ?, ?)''', setting)
+        
+        # Check if current_event has data, if not add default
+        current = conn.execute("SELECT * FROM current_event").fetchone()
+        if not current:
+            conn.execute("INSERT INTO current_event (tukio, tarehe) VALUES (?, date('now'))", ('Misa',))
+        
         # Ongeza admin default
         admin = conn.execute("SELECT * FROM watumiaji WHERE username = 'admin'").fetchone()
         if not admin:
@@ -134,6 +185,9 @@ def init_db():
                 ('Peter Massawe', '0745678901', 'Bass', 'Kaloleni', 'active'),
                 ('Esther Joseph', '0756789012', 'Soprano', 'Njiro', 'active'),
                 ('Grace Lucy', '0767890123', 'Alto', 'Sombetini', 'active'),
+                ('James Mboi', '0771234567', 'Tenor', 'Sekei', 'active'),
+                ('Hadii Jane', '0781234567', 'Soprano', 'Themi', 'active'),
+                ('John Kasole', '0791234567', 'Bass', 'Levolosi', 'active'),
             ]
             for w in wanakwaya_mfano:
                 conn.execute("INSERT INTO wanakwaya (jina, simu, sauti, anwani, status) VALUES (?, ?, ?, ?, ?)", w)
@@ -185,7 +239,7 @@ def dashboard():
         return redirect(url_for('login'))
     
     with get_db() as conn:
-        wanakwaya_count = conn.execute("SELECT COUNT(*) as count FROM wanakwaya").fetchone()
+        wanakwaya_count = conn.execute("SELECT COUNT(*) as count FROM wanakwaya WHERE status = 'active'").fetchone()
     
     return render_template('dashboard.html', 
                          wanakwaya_count=wanakwaya_count['count'],
@@ -383,10 +437,6 @@ def api_suspend_wanakwaya():
     status = data.get('status')
     
     with get_db() as conn:
-        try:
-            conn.execute("ALTER TABLE wanakwaya ADD COLUMN status TEXT DEFAULT 'active'")
-        except:
-            pass
         conn.execute("UPDATE wanakwaya SET status = ? WHERE id = ?", (status, member_id))
         conn.commit()
     
@@ -466,10 +516,10 @@ def edit_wanakwaya():
     flash('Taarifa za mwanakwaya zimehaririwa!', 'success')
     return redirect(url_for('wanakwaya'))
 
-# ============ MAHUDHURIO ROUTES ============
+# ============ MAHUDHURIO ROUTES (SIMPLE) ============
 
-@app.route('/mahudhurio', methods=['GET', 'POST'])
-def mahudhurio():
+@app.route('/mahudhurio_simple', methods=['GET', 'POST'])
+def mahudhurio_simple():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
@@ -490,7 +540,7 @@ def mahudhurio():
             else:
                 flash('Mwanakwaya huyo amesharekodiwa kwa tarehe hii!', 'info')
         
-        return redirect(url_for('mahudhurio'))
+        return redirect(url_for('mahudhurio_simple'))
     
     with get_db() as conn:
         wanakwaya = conn.execute("SELECT * FROM wanakwaya WHERE status = 'active'").fetchall()
@@ -498,10 +548,207 @@ def mahudhurio():
                                         JOIN wanakwaya w ON m.mwanakwaya_id = w.id 
                                         WHERE m.tarehe = ? ORDER BY w.jina''', (tarehe_leo,)).fetchall()
     
-    return render_template('mahudhurio.html', 
+    return render_template('mahudhurio_simple.html', 
                          wanakwaya=wanakwaya, 
                          mahudhurio=mahudhurio_leo,
                          tarehe_leo=tarehe_leo)
+
+# ============ MAHUDHURIO DETAILED ROUTES (ENHANCED) ============
+
+@app.route('/mahudhurio')
+def mahudhurio_enhanced():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    with get_db() as conn:
+        # Get current event
+        current_event = conn.execute("SELECT * FROM current_event ORDER BY id DESC LIMIT 1").fetchone()
+        if not current_event:
+            current_event = {'tukio': 'Misa', 'tarehe': datetime.now().strftime('%Y-%m-%d')}
+        
+        # Get all penalty settings
+        penalty_settings = conn.execute("SELECT * FROM penalty_settings").fetchall()
+        
+        # Get all active members by voice
+        wanakwaya_soprano = conn.execute("SELECT * FROM wanakwaya WHERE sauti = 'Soprano' AND status = 'active' ORDER BY jina").fetchall()
+        wanakwaya_alto = conn.execute("SELECT * FROM wanakwaya WHERE sauti = 'Alto' AND status = 'active' ORDER BY jina").fetchall()
+        wanakwaya_tenor = conn.execute("SELECT * FROM wanakwaya WHERE sauti = 'Tenor' AND status = 'active' ORDER BY jina").fetchall()
+        wanakwaya_bass = conn.execute("SELECT * FROM wanakwaya WHERE sauti = 'Bass' AND status = 'active' ORDER BY jina").fetchall()
+        
+        # Get today's attendance records for this event
+        today = datetime.now().strftime('%Y-%m-%d')
+        attendance = {}
+        records = conn.execute('''SELECT * FROM mahudhurio_detailed 
+                                  WHERE tarehe = ? AND tukio = ?''', 
+                               (today, current_event['tukio'])).fetchall()
+        for rec in records:
+            attendance[rec['mwanakwaya_id']] = {
+                'status': rec['status'],
+                'dakika_chelewa': rec['dakika_chelewa'],
+                'penalty': rec['penalty']
+            }
+    
+    return render_template('mahudhurio.html', 
+                         soprano=wanakwaya_soprano,
+                         alto=wanakwaya_alto,
+                         tenor=wanakwaya_tenor,
+                         bass=wanakwaya_bass,
+                         current_event=current_event,
+                         penalty_settings=penalty_settings,
+                         attendance=attendance)
+
+@app.route('/api/mahudhurio/update', methods=['POST'])
+def api_update_attendance():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    member_id = data.get('member_id')
+    status = data.get('status')
+    dakika_chelewa = data.get('dakika_chelewa', 0)
+    tukio = data.get('tukio')
+    member_name = data.get('member_name')
+    sauti = data.get('sauti')
+    
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # Get penalty settings for this event
+    with get_db() as conn:
+        settings = conn.execute("SELECT * FROM penalty_settings WHERE tukio = ?", (tukio,)).fetchone()
+        if not settings:
+            settings = {'penalty_utoro': 20000, 'penalty_kwa_dakika': 1000, 'siku_za_kudouble': 10}
+        
+        # Calculate penalty
+        penalty = 0
+        if status == 'absent':
+            penalty = settings['penalty_utoro']
+        elif status == 'late':
+            penalty = dakika_chelewa * settings['penalty_kwa_dakika']
+        
+        # Calculate double penalty date
+        double_date = (datetime.now() + timedelta(days=settings['siku_za_kudouble'])).strftime('%Y-%m-%d')
+        
+        # Check if record exists
+        existing = conn.execute('''SELECT * FROM mahudhurio_detailed 
+                                   WHERE mwanakwaya_id = ? AND tarehe = ? AND tukio = ?''',
+                               (member_id, today, tukio)).fetchone()
+        
+        if existing:
+            conn.execute('''UPDATE mahudhurio_detailed 
+                            SET status = ?, dakika_chelewa = ?, penalty = ?, tarehe_penalty_double = ?
+                            WHERE mwanakwaya_id = ? AND tarehe = ? AND tukio = ?''',
+                        (status, dakika_chelewa, penalty, double_date, member_id, today, tukio))
+        else:
+            conn.execute('''INSERT INTO mahudhurio_detailed 
+                            (mwanakwaya_id, mwanakwaya_jina, sauti, tukio, tarehe, status, dakika_chelewa, penalty, tarehe_penalty_double)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        (member_id, member_name, sauti, tukio, today, status, dakika_chelewa, penalty, double_date))
+        
+        conn.commit()
+    
+    return jsonify({'success': True, 'penalty': penalty, 'double_date': double_date})
+
+@app.route('/api/mahudhurio/settings/update', methods=['POST'])
+def api_update_penalty_settings():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    tukio = data.get('tukio')
+    penalty_utoro = data.get('penalty_utoro')
+    penalty_kwa_dakika = data.get('penalty_kwa_dakika')
+    siku_za_kudouble = data.get('siku_za_kudouble')
+    
+    with get_db() as conn:
+        conn.execute('''INSERT OR REPLACE INTO penalty_settings 
+                        (tukio, penalty_utoro, penalty_kwa_dakika, siku_za_kudouble)
+                        VALUES (?, ?, ?, ?)''',
+                    (tukio, penalty_utoro, penalty_kwa_dakika, siku_za_kudouble))
+        conn.commit()
+    
+    return jsonify({'success': True})
+
+@app.route('/api/mahudhurio/event/update', methods=['POST'])
+def api_update_current_event():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    tukio = data.get('tukio')
+    tarehe = data.get('tarehe')
+    
+    with get_db() as conn:
+        conn.execute("DELETE FROM current_event")
+        conn.execute("INSERT INTO current_event (tukio, tarehe) VALUES (?, ?)", (tukio, tarehe))
+        conn.commit()
+    
+    return jsonify({'success': True})
+
+@app.route('/api/mahudhurio/member/<int:id>')
+def api_get_member_attendance(id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    with get_db() as conn:
+        # Get member details
+        member = conn.execute("SELECT * FROM wanakwaya WHERE id = ?", (id,)).fetchone()
+        
+        # Get all attendance records for this member
+        records = conn.execute('''SELECT * FROM mahudhurio_detailed 
+                                  WHERE mwanakwaya_id = ? 
+                                  ORDER BY tarehe DESC''', (id,)).fetchall()
+        
+        # Calculate total penalty and days remaining
+        total_penalty = 0
+        for rec in records:
+            if not rec['imelipwa']:
+                total_penalty += rec['penalty']
+        
+        # Check if should be suspended (30 days without payment)
+        last_penalty_date = None
+        if records:
+            last_penalty_date = records[0]['tarehe']
+            days_since = (datetime.now() - datetime.strptime(last_penalty_date, '%Y-%m-%d')).days
+        else:
+            days_since = 0
+        
+        records_list = []
+        for rec in records:
+            records_list.append({
+                'id': rec['id'],
+                'tukio': rec['tukio'],
+                'tarehe': rec['tarehe'],
+                'status': rec['status'],
+                'dakika_chelewa': rec['dakika_chelewa'],
+                'penalty': rec['penalty'],
+                'imelipwa': rec['imelipwa'],
+                'double_date': rec['tarehe_penalty_double']
+            })
+        
+        return jsonify({
+            'success': True,
+            'member': {
+                'id': member['id'],
+                'jina': member['jina'],
+                'sauti': member['sauti'],
+                'status': member['status']
+            },
+            'records': records_list,
+            'total_penalty': total_penalty,
+            'days_since_last_penalty': days_since,
+            'should_be_suspended': days_since >= 30 and total_penalty > 0
+        })
+
+@app.route('/api/mahudhurio/pay/<int:id>', methods=['POST'])
+def api_pay_penalty(id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    with get_db() as conn:
+        conn.execute("UPDATE mahudhurio_detailed SET imelipwa = 1 WHERE id = ?", (id,))
+        conn.commit()
+    
+    return jsonify({'success': True})
 
 # ============ RATIBA EVENTS ROUTES ============
 
@@ -637,7 +884,7 @@ def assets():
         return redirect(url_for('login'))
     return render_template('assets.html')
 
-# ============ RATIBA YA NYIMBO ROUTES (NEW) ============
+# ============ RATIBA YA NYIMBO ROUTES ============
 
 @app.route('/ratiba/mwaka/<mwaka>')
 def ratiba_mwaka_kanisa(mwaka):
@@ -760,7 +1007,6 @@ def generate_timetable_v2():
         for section, songs in songs_data.items():
             if songs and len(songs) > 0:
                 for idx, song in enumerate(songs):
-                    # If song details already provided, use them
                     if 'mtunzi' in song and song['mtunzi']:
                         timetable.append({
                             'section': section,
@@ -774,7 +1020,6 @@ def generate_timetable_v2():
                             'tempo': song.get('tempo', '-')
                         })
                     else:
-                        # Fetch from database
                         wimbo = conn.execute("SELECT jina, mtunzi, key, time_signature, tempo FROM nyimbo WHERE id = ?", (song['id'],)).fetchone()
                         if wimbo:
                             timetable.append({
@@ -789,7 +1034,6 @@ def generate_timetable_v2():
                                 'tempo': wimbo['tempo'] or '-'
                             })
     
-    # Save to database
     tukio = data.get('tukio', '')
     tarehe = data.get('tarehe', '')
     jumapili = data.get('jumapili', '')
@@ -845,6 +1089,8 @@ def generate_timetable():
                         })
     
     return jsonify({'success': True, 'timetable': timetable})
+
+# ============ VIEW ONLY ROUTE ============
 
 @app.route('/ratiba/view_only')
 def ratiba_view_only():
